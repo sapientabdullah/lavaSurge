@@ -1081,12 +1081,15 @@ export class Game {
       this.euler.setFromQuaternion(this.camera.quaternion);
 
       this.euler.y -= event.movementX * this.mouseSensitivity;
+
       this.euler.x -= event.movementY * this.mouseSensitivity;
 
       this.euler.x = Math.max(
         -Math.PI / 2,
         Math.min(Math.PI / 2, this.euler.x)
       );
+
+      this.euler.z = 0;
 
       this.camera.quaternion.setFromEuler(this.euler);
     }

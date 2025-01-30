@@ -42,6 +42,7 @@ export class Platforms {
   private platformRemovalDistance: number = 30;
   private scene: THREE.Scene;
   private world: CANNON.World;
+  private bumpTexture: THREE.Texture;
 
   private readonly TRAP_BREAK_DELAY = 1000;
   private activatedTraps: Set<Platform> = new Set();
@@ -50,6 +51,41 @@ export class Platforms {
     this.scene = scene;
     this.world = world;
     this.scoreElement = document.querySelector(".score-display")!;
+
+    const textureSize = 256;
+    const data = new Uint8Array(textureSize * textureSize);
+    for (let i = 0; i < data.length; i++) {
+      const x = i % textureSize;
+      const y = Math.floor(i / textureSize);
+      const noise =
+        Math.sin(x * 0.1) *
+        Math.cos(y * 0.1) *
+        Math.sin((x + y) * 0.05) *
+        (Math.random() * 0.3 + 0.7);
+      data[i] = (noise + 1) * 127.5;
+    }
+
+    this.bumpTexture = new THREE.DataTexture(
+      data,
+      textureSize,
+      textureSize,
+      THREE.LuminanceFormat
+    );
+    this.bumpTexture.wrapS = THREE.RepeatWrapping;
+    this.bumpTexture.wrapT = THREE.RepeatWrapping;
+    this.bumpTexture.needsUpdate = true;
+  }
+
+  private createPlatformMaterial(color: number): THREE.MeshStandardMaterial {
+    return new THREE.MeshStandardMaterial({
+      color: color,
+      transparent: true,
+      opacity: 1,
+      bumpMap: this.bumpTexture,
+      bumpScale: 0.1,
+      roughness: 0.7,
+      metalness: 0.2,
+    });
   }
 
   public getScore(): number {
@@ -617,22 +653,74 @@ export class Platforms {
     length: number,
     isMoving: boolean = false
   ): void {
-    const platformGeo = new THREE.BoxGeometry(size, 0.5, length);
-    const platformMat = new THREE.MeshStandardMaterial({
-      color: generateColor(),
-      transparent: true,
-      opacity: 1,
-    });
-    const platformMesh = new THREE.Mesh(platformGeo, platformMat);
-    const platformShape = new CANNON.Box(
-      new CANNON.Vec3(size / 2, 0.25, length / 2)
+    const platformGeo = new THREE.BoxGeometry(
+      size, // width
+      0.5, // height
+      length, // depth
+      32, // width segments
+      8, // height segments
+      32 // depth segments
     );
+    const platformMat = this.createPlatformMaterial(generateColor());
+    const platformMesh = new THREE.Mesh(platformGeo, platformMat);
+
+    const positions = platformGeo.attributes.position.array;
+    const normals = platformGeo.attributes.normal.array;
+
+    const isFaceVertex = (
+      normal: THREE.Vector3,
+      targetNormal: THREE.Vector3
+    ) => {
+      return Math.abs(normal.dot(targetNormal)) > 0.9;
+    };
+
+    for (let i = 0; i < positions.length; i += 3) {
+      const vertexNormal = new THREE.Vector3(
+        normals[i],
+        normals[i + 1],
+        normals[i + 2]
+      );
+
+      const posX = new THREE.Vector3(1, 0, 0); // right face
+      const negX = new THREE.Vector3(-1, 0, 0); // left face
+      const posY = new THREE.Vector3(0, 1, 0); // top face
+      const negY = new THREE.Vector3(0, -1, 0); // bottom face
+      const posZ = new THREE.Vector3(0, 0, 1); // front face
+      const negZ = new THREE.Vector3(0, 0, -1); // back face
+
+      let displacement = (Math.random() - 0.5) * 0.1;
+
+      if (
+        isFaceVertex(vertexNormal, posX) ||
+        isFaceVertex(vertexNormal, negX)
+      ) {
+        positions[i] += vertexNormal.x * displacement;
+      }
+      if (
+        isFaceVertex(vertexNormal, posY) ||
+        isFaceVertex(vertexNormal, negY)
+      ) {
+        positions[i + 1] += vertexNormal.y * displacement;
+      }
+      if (
+        isFaceVertex(vertexNormal, posZ) ||
+        isFaceVertex(vertexNormal, negZ)
+      ) {
+        positions[i + 2] += vertexNormal.z * displacement;
+      }
+    }
+
+    platformGeo.attributes.position.needsUpdate = true;
+    platformGeo.computeVertexNormals();
 
     platformMesh.position.set(pos.x, pos.y, pos.z);
     platformMesh.castShadow = true;
     platformMesh.receiveShadow = true;
     this.scene.add(platformMesh);
 
+    const platformShape = new CANNON.Box(
+      new CANNON.Vec3(size / 2, 0.25, length / 2)
+    );
     const platformBody = new CANNON.Body({
       mass: 0,
       shape: platformShape,
@@ -641,7 +729,14 @@ export class Platforms {
     this.world.addBody(platformBody);
 
     const wallHeight = 3;
-    const wallGeometry = new THREE.BoxGeometry(size, wallHeight, 0.1);
+    const wallGeometry = new THREE.BoxGeometry(
+      size,
+      wallHeight,
+      0.1,
+      32,
+      16,
+      4
+    );
     const wallMaterial = new THREE.MeshPhysicalMaterial({
       color: 0x88ccff,
       roughness: 0,
@@ -649,6 +744,25 @@ export class Platforms {
       transmission: 0.9,
       thickness: 0.5,
     });
+
+    const wallPositions = wallGeometry.attributes.position.array;
+    const wallNormals = wallGeometry.attributes.normal.array;
+
+    for (let i = 0; i < wallPositions.length; i += 3) {
+      const vertexNormal = new THREE.Vector3(
+        wallNormals[i],
+        wallNormals[i + 1],
+        wallNormals[i + 2]
+      );
+
+      const displacement = (Math.random() - 0.5) * 0.05;
+      wallPositions[i] += vertexNormal.x * displacement;
+      wallPositions[i + 1] += vertexNormal.y * displacement;
+      wallPositions[i + 2] += vertexNormal.z * displacement;
+    }
+
+    wallGeometry.attributes.position.needsUpdate = true;
+    wallGeometry.computeVertexNormals();
 
     const wallMesh = new THREE.Mesh(wallGeometry, wallMaterial);
     wallMesh.position.set(pos.x, pos.y + wallHeight / 2, pos.z);
@@ -670,8 +784,7 @@ export class Platforms {
     });
     this.world.addBody(wallBody);
 
-    this.platformHealth.set(platformBody, 100);
-    this.platforms.push({
+    const platform: Platform = {
       mesh: platformMesh,
       body: platformBody,
       glassWall: {
@@ -679,32 +792,16 @@ export class Platforms {
         body: wallBody,
         health: 100,
       },
-    });
+    };
 
     if (isMoving) {
-      const startPos = new THREE.Vector3(pos.x, pos.y, pos.z);
-      const movement = this.createMovementPattern(startPos);
-      this.platforms.push({
-        mesh: platformMesh,
-        body: platformBody,
-        glassWall: {
-          mesh: wallMesh,
-          body: wallBody,
-          health: 100,
-        },
-        movement,
-      });
-    } else {
-      this.platforms.push({
-        mesh: platformMesh,
-        body: platformBody,
-        glassWall: {
-          mesh: wallMesh,
-          body: wallBody,
-          health: 100,
-        },
-      });
+      platform.movement = this.createMovementPattern(
+        new THREE.Vector3(pos.x, pos.y, pos.z)
+      );
     }
+
+    this.platforms.push(platform);
+    this.platformHealth.set(platformBody, 100);
   }
 
   private createConePlatform(
