@@ -24,7 +24,7 @@ interface Platform {
   };
 }
 
-export class LavaShaderScene {
+export class Game {
   private camera: THREE.PerspectiveCamera;
   private renderer: THREE.WebGLRenderer;
   private composer: EffectComposer;
@@ -1142,5 +1142,5 @@ export class LavaShaderScene {
   }
 }
 
-const lavaScene = new LavaShaderScene();
-lavaScene.startAnimation();
+const game = new Game();
+game.startAnimation();
