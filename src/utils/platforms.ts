@@ -426,7 +426,11 @@ export class Platforms {
       { x: 0, y: 4, z: -28 },
     ];
 
-    initialPlatformPositions.forEach((pos) => {
+    const firstPlatformPos = initialPlatformPositions[0];
+    this.createCylinderPlatform(firstPlatformPos, 4);
+
+    for (let i = 1; i < initialPlatformPositions.length; i++) {
+      const pos = initialPlatformPositions[i];
       this.createPlatform(pos);
       if (Math.random() < 0.4) {
         const collectibleType: Coin["type"] =
@@ -440,7 +444,7 @@ export class Platforms {
           collectibleType
         );
       }
-    });
+    }
   }
 
   public updatePlatforms(playerPos: CANNON.Vec3): void {
