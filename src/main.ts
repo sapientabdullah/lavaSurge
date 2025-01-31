@@ -126,6 +126,9 @@ export class Game {
   private canJump = false;
   private reticle: HTMLElement;
 
+  private paused: boolean = false;
+  private animationId: number | null = null; // animation loop ID
+
   constructor() {
     this.world = new CANNON.World({
       gravity: new CANNON.Vec3(0, -20, 0),
@@ -839,6 +842,22 @@ export class Game {
       case "ArrowRight":
         this.moveState.right = true;
         break;
+      case "KeyE":
+        if (this.canGrapple && !this.isGrappling) {
+          this.startGrapple();
+        }
+        break;
+      case "KeyP":
+        this.paused = !this.paused;
+        if (this.paused) {
+          if (this.animationId !== null) {
+            cancelAnimationFrame(this.animationId);
+            this.animationId = null;
+          }
+        } else {
+          this.startAnimation();
+        }
+        break;
       case "Space":
         if (this.canJump) {
           this.moveState.jump = true;
@@ -1213,6 +1232,10 @@ export class Game {
   }
 
   public animate(): void {
+    if (this.paused) {
+      return;
+    }
+
     const delta = this.clock.getDelta();
 
     const playerDirection = new THREE.Vector3(0, 0, -1).applyQuaternion(
@@ -1225,11 +1248,6 @@ export class Game {
       this.playerBody.position.z
     );
     this.glassEnemies.update(playerPosition, playerDirection);
-
-    // if (this.glassEnemies.checkPlayerCollisions(this.playerBody)) {
-    //   // Player hit by enemy - reset position
-    //   this.resetPlayer();
-    // }
 
     this.updatePhysics();
     this.updateMovement();
@@ -1255,14 +1273,17 @@ export class Game {
 
     this.renderer.clear();
     this.composer.render(0.01);
+
+    this.animationId = requestAnimationFrame(() => this.animate());
   }
 
   public startAnimation(): void {
-    const animate = () => {
-      requestAnimationFrame(animate);
-      this.animate();
-    };
-    animate();
+    if (!this.paused && this.animationId === null) {
+      const animate = () => {
+        this.animate();
+      };
+      this.animationId = requestAnimationFrame(animate);
+    }
   }
 }
 
