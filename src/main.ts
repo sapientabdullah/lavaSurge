@@ -1213,6 +1213,8 @@ export class Game {
       this.animationId = null;
     }
 
+    document.exitPointerLock();
+
     const gameOverScreen = document.getElementById("gameOverScreen");
     if (gameOverScreen) {
       gameOverScreen.classList.add("visible");
