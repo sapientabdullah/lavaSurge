@@ -13,16 +13,7 @@ import { speedLinesShader } from "./shaders/speedLinesShader";
 import { fragmentShader, vertexShader } from "./shaders/lavaShader";
 import { Platforms } from "./utils/platforms";
 import { Enemy } from "./utils/enemy";
-
-interface Platform {
-  mesh: THREE.Mesh;
-  body: CANNON.Body;
-  glassWall?: {
-    mesh: THREE.Mesh;
-    body: CANNON.Body;
-    health: number;
-  };
-}
+import { AudioManager } from "./utils/audioManager";
 
 export class Game {
   private camera: THREE.PerspectiveCamera;
@@ -32,6 +23,8 @@ export class Game {
   private uniforms: { [uniform: string]: THREE.IUniform };
   private ground: THREE.Mesh;
   private scene: THREE.Scene;
+
+  private audioManager: AudioManager;
 
   private world: CANNON.World;
   private playerBody: CANNON.Body;
@@ -142,6 +135,8 @@ export class Game {
       0.1,
       1000
     );
+
+    this.audioManager = new AudioManager(this.camera);
 
     this.renderer = new THREE.WebGLRenderer({ antialias: true });
     this.renderer.setPixelRatio(window.devicePixelRatio);
@@ -479,6 +474,22 @@ export class Game {
         this.runAction.reset();
         this.runAction.play();
         this.currentMainAction = this.runAction;
+
+        if (this.moveState.sprint) {
+          if (!this.audioManager.runningSound.isPlaying) {
+            this.audioManager.runningSound.play();
+          }
+          if (this.audioManager.walkingSound.isPlaying) {
+            this.audioManager.walkingSound.stop();
+          }
+        } else {
+          if (!this.audioManager.walkingSound.isPlaying) {
+            this.audioManager.walkingSound.play();
+          }
+          if (this.audioManager.runningSound.isPlaying) {
+            this.audioManager.runningSound.stop();
+          }
+        }
       }
       this.runAction.timeScale = this.moveState.sprint ? 1.5 : 1.0;
     } else {
@@ -494,6 +505,13 @@ export class Game {
         this.idleAction.reset();
         this.idleAction.play();
         this.currentMainAction = this.idleAction;
+
+        if (this.audioManager.runningSound.isPlaying) {
+          this.audioManager.runningSound.stop();
+        }
+        if (this.audioManager.walkingSound.isPlaying) {
+          this.audioManager.walkingSound.stop();
+        }
       }
     }
   }
@@ -578,6 +596,11 @@ export class Game {
       chosenAttackAction.reset();
       chosenAttackAction.play();
 
+      if (this.audioManager.attackingSound.isPlaying) {
+        this.audioManager.attackingSound.stop();
+      }
+      this.audioManager.attackingSound.play();
+
       this.performAttack();
 
       setTimeout(() => {
@@ -642,6 +665,12 @@ export class Game {
       this.scene.remove(platform.glassWall.mesh);
       this.world.removeBody(platform.glassWall.body);
       this.createGlassBreakEffect(platform.glassWall.mesh.position);
+
+      if (this.audioManager.breakingGlassSound.isPlaying) {
+        this.audioManager.breakingGlassSound.stop();
+      }
+      this.audioManager.breakingGlassSound.play();
+
       delete platform.glassWall;
     }
 
@@ -872,6 +901,11 @@ export class Game {
 
           this.targetVignetteIntensity = 0.3;
           this.reticle.classList.add("jumping");
+
+          if (this.audioManager.jumpingSound.isPlaying) {
+            this.audioManager.jumpingSound.stop();
+          }
+          this.audioManager.jumpingSound.play();
 
           if (this.jumpAction && this.mixer) {
             this.currentMainAction =

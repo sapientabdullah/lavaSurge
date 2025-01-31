@@ -2,14 +2,6 @@ import * as THREE from "three";
 import * as CANNON from "cannon-es";
 import { fragmentShader, vertexShader } from "../shaders/enemyShader";
 
-interface EnemyOptions {
-  position: THREE.Vector3;
-  size?: number;
-  shape?: "sphere" | "cube";
-  speed?: number;
-  health?: number;
-}
-
 export class Enemy {
   private scene: THREE.Scene;
   private world: CANNON.World;
