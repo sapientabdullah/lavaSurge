@@ -20,7 +20,7 @@ Master the swinging axe to shatter glass barriers and defeat menacing glass enem
 ## Features
 
 - **Procedurally Generated Lava**
-- **Grappling Mechanic:**
+- **Grappling Mechanic**
 - **Combat System**
 - **Platforming Challenges**
 - **Collectibles**
