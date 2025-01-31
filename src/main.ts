@@ -14,8 +14,12 @@ import { fragmentShader, vertexShader } from "./shaders/lavaShader";
 import { Platforms } from "./utils/platforms";
 import { Enemy } from "./utils/enemy";
 import { AudioManager } from "./utils/audioManager";
+import { LoadingManager } from "./utils/loadingManager";
 
 export class Game {
+  private loadingManager: LoadingManager;
+  private audioManager: AudioManager;
+
   private camera: THREE.PerspectiveCamera;
   private renderer: THREE.WebGLRenderer;
   private composer: EffectComposer;
@@ -23,8 +27,6 @@ export class Game {
   private uniforms: { [uniform: string]: THREE.IUniform };
   private ground: THREE.Mesh;
   private scene: THREE.Scene;
-
-  private audioManager: AudioManager;
 
   private world: CANNON.World;
   private playerBody: CANNON.Body;
@@ -123,6 +125,12 @@ export class Game {
   private animationId: number | null = null; // animation loop ID
 
   constructor() {
+    this.loadingManager = new LoadingManager();
+
+    this.loadingManager.setOnLoadCallback(() => {
+      this.startAnimation();
+    });
+
     this.world = new CANNON.World({
       gravity: new CANNON.Vec3(0, -20, 0),
     });
@@ -136,7 +144,7 @@ export class Game {
       1000
     );
 
-    this.audioManager = new AudioManager(this.camera);
+    this.audioManager = new AudioManager(this.camera, this.loadingManager);
 
     this.renderer = new THREE.WebGLRenderer({ antialias: true });
     this.renderer.setPixelRatio(window.devicePixelRatio);
@@ -159,11 +167,14 @@ export class Game {
 
     this.resetPlayer();
 
-    new RGBELoader().load("/environment.hdr", (texture) => {
-      texture.mapping = THREE.EquirectangularReflectionMapping;
-      this.scene.background = texture;
-      this.scene.environment = texture;
-    });
+    new RGBELoader(this.loadingManager.getManager()).load(
+      "/environment.hdr",
+      (texture) => {
+        texture.mapping = THREE.EquirectangularReflectionMapping;
+        this.scene.background = texture;
+        this.scene.environment = texture;
+      }
+    );
 
     this.renderer.domElement.addEventListener("click", () => {
       this.renderer.domElement.requestPointerLock();
@@ -182,7 +193,9 @@ export class Game {
 
     this.reticle = document.querySelector(".reticle")!;
 
-    const textureLoader = new THREE.TextureLoader();
+    const textureLoader = new THREE.TextureLoader(
+      this.loadingManager.getManager()
+    );
     const cloudTexture = textureLoader.load("/textures/lava-cloud.png");
     const lavaTexture = textureLoader.load("/textures/lava-tile.jpg");
 
@@ -244,7 +257,7 @@ export class Game {
     this.platforms = new Platforms(this.scene, this.world);
     this.platforms.initializePlatforms();
 
-    const loader = new GLTFLoader();
+    const loader = new GLTFLoader(this.loadingManager.getManager());
     loader.load(
       "/models/player/scene.gltf",
       (gltf) => {
@@ -1321,5 +1334,4 @@ export class Game {
   }
 }
 
-const game = new Game();
-game.startAnimation();
+new Game();

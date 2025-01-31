@@ -1,5 +1,6 @@
 import * as THREE from "three";
 import { Audio, AudioListener, AudioLoader } from "three";
+import { LoadingManager } from "./loadingManager";
 
 export class AudioManager {
   private listener: AudioListener;
@@ -12,11 +13,11 @@ export class AudioManager {
   public attackingSound: Audio;
   public breakingGlassSound: Audio;
 
-  constructor(camera: THREE.PerspectiveCamera) {
+  constructor(camera: THREE.PerspectiveCamera, loadingManager: LoadingManager) {
     this.listener = new AudioListener();
     camera.add(this.listener);
 
-    this.audioLoader = new AudioLoader();
+    this.audioLoader = new AudioLoader(loadingManager.getManager());
 
     this.bgMusic = new Audio(this.listener);
     this.runningSound = new Audio(this.listener);
