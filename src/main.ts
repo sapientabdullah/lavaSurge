@@ -437,10 +437,13 @@ export class Game {
         ? 2.0 // speed lines strength
         : 0.0;
 
-    this.currentSpeedLineIntensity +=
-      (this.targetSpeedLineIntensity - this.currentSpeedLineIntensity) * 0.2;
+    this.currentSpeedLineIntensity = this.updateEffect(
+      this.targetSpeedLineIntensity,
+      this.currentSpeedLineIntensity,
+      this.speedLinesPass.uniforms.speed,
+      0.2
+    );
 
-    this.speedLinesPass.uniforms.speed.value = this.currentSpeedLineIntensity;
     this.speedLinesPass.uniforms.time.value += this.clock.getDelta() * 2.0;
   }
 
@@ -454,10 +457,24 @@ export class Game {
         ? 0.2 // vignette strength
         : 0.0;
 
-    this.currentVignetteIntensity +=
-      (this.targetVignetteIntensity - this.currentVignetteIntensity) * 0.1;
+    this.currentVignetteIntensity = this.updateEffect(
+      this.targetVignetteIntensity,
+      this.currentVignetteIntensity,
+      this.vignettePass.uniforms.intensity,
+      0.1
+    );
+  }
 
-    this.vignettePass.uniforms.intensity.value = this.currentVignetteIntensity;
+  private updateEffect(
+    targetIntensity: number,
+    currentIntensity: number,
+    uniform: { value: number },
+    deltaMultiplier: number = 1.0
+  ): number {
+    const newIntensity =
+      currentIntensity + (targetIntensity - currentIntensity) * deltaMultiplier;
+    uniform.value = newIntensity;
+    return newIntensity;
   }
 
   private updatePlayerAnimation(): void {
@@ -1140,6 +1157,10 @@ export class Game {
   private updatePhysics(): void {
     this.world.step(1 / 60);
 
+    if (this.playerBody.position.y < -1.5) {
+      this.gameOver();
+    }
+
     if (this.armsModel) {
       const forward = new THREE.Vector3(0, 0, -1).applyQuaternion(
         this.camera.quaternion
@@ -1183,6 +1204,28 @@ export class Game {
         }
       }
     }
+  }
+
+  private gameOver(): void {
+    this.paused = true;
+    if (this.animationId !== null) {
+      cancelAnimationFrame(this.animationId);
+      this.animationId = null;
+    }
+
+    const gameOverScreen = document.getElementById("gameOverScreen");
+    if (gameOverScreen) {
+      gameOverScreen.classList.add("visible");
+    }
+
+    const restartButton = document.getElementById("restartButton");
+    if (restartButton) {
+      restartButton.addEventListener("click", () => this.restartGame());
+    }
+  }
+
+  private restartGame(): void {
+    window.location.reload();
   }
 
   private updateMovement(): void {

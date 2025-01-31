@@ -264,3 +264,97 @@ body {
   font-size: 16px;
   font-weight: bold;
 }
+
+#restartButton {
+  padding: 10px 20px;
+  font-size: 24px;
+  color: white;
+  background-color: #ff5722;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+}
+
+#restartButton:hover {
+  background-color: #e64a19;
+}
+
+#gameOverScreen {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.9);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.5s ease, visibility 0.5s ease;
+}
+
+#gameOverScreen.visible {
+  opacity: 1;
+  visibility: visible;
+}
+
+.game-over-content {
+  background: linear-gradient(135deg, #ff416c, #ff4b2b);
+  padding: 40px 60px;
+  border-radius: 20px;
+  text-align: center;
+  position: relative;
+  overflow: hidden;
+  clip-path: polygon(0% 15%,
+      15% 0%,
+      85% 0%,
+      100% 15%,
+      100% 85%,
+      85% 100%,
+      15% 100%,
+      0% 85%);
+  animation: glow 2s infinite alternate;
+}
+
+/* Glow Animation */
+@keyframes glow {
+  0% {
+    box-shadow: 0 0 10px rgba(255, 65, 108, 0.7), 0 0 20px rgba(255, 75, 43, 0.7);
+  }
+
+  100% {
+    box-shadow: 0 0 20px rgba(255, 65, 108, 0.9), 0 0 40px rgba(255, 75, 43, 0.9);
+  }
+}
+
+.game-over-content h1 {
+  font-size: 48px;
+  color: white;
+  margin-bottom: 20px;
+  text-shadow: 0 0 10px rgba(255, 255, 255, 0.8);
+}
+
+.game-over-content p {
+  font-size: 24px;
+  color: white;
+  margin-bottom: 30px;
+}
+
+#restartButton {
+  padding: 12px 24px;
+  font-size: 18px;
+  color: #ff416c;
+  background: white;
+  border: none;
+  border-radius: 25px;
+  cursor: pointer;
+  transition: background 0.3s ease, transform 0.3s ease;
+}
+
+#restartButton:hover {
+  background: #ff4b2b;
+  color: white;
+  transform: scale(1.1);
+}
