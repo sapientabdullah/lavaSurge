@@ -21,7 +21,7 @@ export class Enemy {
   }> = [];
   private spawnInterval: number = 5000;
   private lastSpawnTime: number = 0;
-  private maxEnemies: number = 1;
+  private maxEnemies: number = 0;
   private spawnDistance: number = 30; // distance in front of player to spawn
   private spawnArc: number = Math.PI / 3;
 

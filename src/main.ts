@@ -42,9 +42,22 @@ export class Game {
   private attackAnimations: THREE.AnimationAction[] = [];
   private isAttacking = false;
 
+  private runAction: THREE.AnimationAction | null = null;
+  private currentMainAction: THREE.AnimationAction | null = null;
+  private animationTransitionDuration = 0.15;
+
   private glassEnemies: Enemy;
 
   private platforms: Platforms;
+
+  private currentRotationVelocity = new THREE.Vector2(0, 0);
+  private readonly rotationAcceleration = 8.0;
+  private readonly rotationDamping = 0.85;
+  private readonly maxRotationVelocity = 0.1;
+  private mouseSensitivity = 0.05;
+
+  private rotationX = 0; // up/down
+  private rotationY = 0; // left/right
 
   private attackRaycaster: THREE.Raycaster;
   private attackRange = 3; // attack reach
@@ -108,11 +121,9 @@ export class Game {
   };
 
   private moveSpeed = 5;
-  private sprintSpeed = 10;
+  private sprintSpeed = 12;
   private jumpForce = 10;
   private canJump = false;
-  private mouseSensitivity = 0.002;
-  private euler = new THREE.Euler(0, 0, 0, "YXZ");
   private reticle: HTMLElement;
 
   constructor() {
@@ -245,25 +256,35 @@ export class Game {
 
         this.mixer = new THREE.AnimationMixer(this.armsModel);
         const animations = gltf.animations;
+
+        // idle animation
         const idleAnimation = animations.find(
           (animation) => animation.name === "axe_IDLE"
         );
-
         if (idleAnimation) {
           this.idleAction = this.mixer.clipAction(idleAnimation);
           this.idleAction.play();
         }
 
+        // jump animation
         const jumpAnimation = animations.find(
           (animation) => animation.name === "axe_JUMP"
         );
-
         if (jumpAnimation) {
           this.jumpAction = this.mixer.clipAction(jumpAnimation);
         }
 
-        const attackAnimationNames = ["axe_ATK1(hit)", "axe_ATK2(hit)"];
+        // Load run animation
+        const runAnimation = animations.find(
+          (animation) => animation.name === "axe_RUN"
+        );
+        if (runAnimation) {
+          this.runAction = this.mixer.clipAction(runAnimation);
+          this.runAction.setLoop(THREE.LoopRepeat, Infinity);
+        }
 
+        // attack animations
+        const attackAnimationNames = ["axe_ATK1(hit)", "axe_ATK2(hit)"];
         attackAnimationNames.forEach((animationName) => {
           const attackAnimation = animations.find(
             (animation) => animation.name === animationName
@@ -426,6 +447,52 @@ export class Game {
       (this.targetVignetteIntensity - this.currentVignetteIntensity) * 0.1;
 
     this.vignettePass.uniforms.intensity.value = this.currentVignetteIntensity;
+  }
+
+  private updatePlayerAnimation(): void {
+    if (!this.mixer || !this.idleAction || !this.runAction) return;
+
+    if (this.isJumping) return;
+
+    const isMoving =
+      this.moveState.forward ||
+      this.moveState.backward ||
+      this.moveState.left ||
+      this.moveState.right;
+
+    if (this.isAttacking) {
+      this.idleAction.weight = 0;
+      this.runAction.weight = 0;
+    } else if (isMoving) {
+      if (this.currentMainAction !== this.runAction) {
+        if (this.currentMainAction) {
+          this.currentMainAction.crossFadeTo(
+            this.runAction,
+            this.animationTransitionDuration,
+            true
+          );
+        }
+        this.runAction.enabled = true;
+        this.runAction.reset();
+        this.runAction.play();
+        this.currentMainAction = this.runAction;
+      }
+      this.runAction.timeScale = this.moveState.sprint ? 1.5 : 1.0;
+    } else {
+      if (this.currentMainAction !== this.idleAction) {
+        if (this.currentMainAction) {
+          this.currentMainAction.crossFadeTo(
+            this.idleAction,
+            this.animationTransitionDuration,
+            true
+          );
+        }
+        this.idleAction.enabled = true;
+        this.idleAction.reset();
+        this.idleAction.play();
+        this.currentMainAction = this.idleAction;
+      }
+    }
   }
 
   private updateSpeedEffect(): void {
@@ -785,30 +852,56 @@ export class Game {
           this.camera.updateProjectionMatrix();
 
           this.targetVignetteIntensity = 0.3;
-
           this.reticle.classList.add("jumping");
 
-          if (this.jumpAction && this.idleAction) {
-            this.idleAction.stop();
+          if (this.jumpAction && this.mixer) {
+            this.currentMainAction =
+              this.moveState.forward ||
+              this.moveState.backward ||
+              this.moveState.left ||
+              this.moveState.right
+                ? this.runAction
+                : this.idleAction;
+
+            if (this.currentMainAction) {
+              this.currentMainAction.crossFadeTo(
+                this.jumpAction,
+                this.animationTransitionDuration,
+                true
+              );
+            }
+            if (this.runAction) {
+              this.runAction.enabled = false;
+            }
+            if (this.idleAction) {
+              this.idleAction.enabled = false;
+            }
+
             this.jumpAction.reset();
             this.jumpAction.setLoop(THREE.LoopOnce, 1);
             this.jumpAction.clampWhenFinished = true;
             this.jumpAction.play();
 
+            const jumpDuration = 1550;
             setTimeout(() => {
-              if (this.jumpAction && this.idleAction) {
-                this.jumpAction.stop();
-                this.idleAction.reset();
-                this.idleAction.play();
+              if (this.jumpAction && this.currentMainAction && this.mixer) {
+                this.currentMainAction.enabled = true;
+                if (this.runAction) this.runAction.enabled = true;
+                if (this.idleAction) this.idleAction.enabled = true;
+
+                this.jumpAction.crossFadeTo(
+                  this.currentMainAction,
+                  this.animationTransitionDuration,
+                  true
+                );
+                this.currentMainAction.reset();
+                this.currentMainAction.play();
+
+                this.reticle.classList.remove("jumping");
+                this.updatePlayerAnimation();
               }
-              this.reticle.classList.remove("jumping");
-            }, 1550);
+            }, jumpDuration);
           }
-        }
-        break;
-      case "KeyE":
-        if (this.playerBody.velocity.y < 0) {
-          this.startGrapple();
         }
         break;
     }
@@ -1078,21 +1171,45 @@ export class Game {
 
   private onMouseMove(event: MouseEvent): void {
     if (document.pointerLockElement === this.renderer.domElement) {
-      this.euler.setFromQuaternion(this.camera.quaternion);
+      const mouseX = -event.movementX * this.mouseSensitivity * 0.001;
+      const mouseY = -event.movementY * this.mouseSensitivity * 0.001;
 
-      this.euler.y -= event.movementX * this.mouseSensitivity;
+      this.currentRotationVelocity.x += mouseX * this.rotationAcceleration;
+      this.currentRotationVelocity.y += mouseY * this.rotationAcceleration;
 
-      this.euler.x -= event.movementY * this.mouseSensitivity;
-
-      this.euler.x = Math.max(
-        -Math.PI / 2,
-        Math.min(Math.PI / 2, this.euler.x)
+      this.currentRotationVelocity.x = THREE.MathUtils.clamp(
+        this.currentRotationVelocity.x,
+        -this.maxRotationVelocity,
+        this.maxRotationVelocity
       );
-
-      this.euler.z = 0;
-
-      this.camera.quaternion.setFromEuler(this.euler);
+      this.currentRotationVelocity.y = THREE.MathUtils.clamp(
+        this.currentRotationVelocity.y,
+        -this.maxRotationVelocity,
+        this.maxRotationVelocity
+      );
     }
+  }
+
+  private updateCameraRotation(): void {
+    this.rotationY += this.currentRotationVelocity.x;
+    this.rotationX += this.currentRotationVelocity.y;
+
+    this.rotationX = THREE.MathUtils.clamp(
+      this.rotationX,
+      -Math.PI / 2 + 0.1,
+      Math.PI / 2 - 0.1
+    );
+
+    this.currentRotationVelocity.multiplyScalar(this.rotationDamping);
+
+    if (Math.abs(this.currentRotationVelocity.x) < 0.0001)
+      this.currentRotationVelocity.x = 0;
+    if (Math.abs(this.currentRotationVelocity.y) < 0.0001)
+      this.currentRotationVelocity.y = 0;
+
+    this.camera.quaternion.setFromEuler(
+      new THREE.Euler(this.rotationX, this.rotationY, 0, "YXZ")
+    );
   }
 
   public animate(): void {
@@ -1121,12 +1238,16 @@ export class Game {
     this.updateSpeedEffect();
     this.updateVignetteEffect();
     this.updateSpeedLines();
+    this.updateCameraRotation();
+
     this.updateGrapple();
     this.updateJumpEffects();
     this.platforms.checkCoinCollections(playerPosition);
     this.platforms.update(this.playerBody.position);
 
     this.uniforms["time"].value += 0.2 * delta * 5;
+
+    this.updatePlayerAnimation();
 
     if (this.mixer) {
       this.mixer.update(delta);
