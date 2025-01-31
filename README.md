@@ -8,11 +8,14 @@
 Master the swinging axe to shatter glass barriers and defeat menacing glass enemies in this fast-paced, action-packed 3D platformer!
 
 <p align="center">
-	<img src="" alt="Demo">
+	<img src="https://cloud-e925yi6jf-hack-club-bot.vercel.app/0screenshot_2025-01-31_at_22.39.45.png" alt="Demo">
 	<br>
-	<a href="">Live demo</a>
+	<a href="https://lava-surge.vercel.app/">Live demo</a>
 	<br>
 </p>
+
+> [!NOTE]  
+> Lava Surge is being developed, and bugs or issues may occur.
 
 ## Features
 
@@ -27,7 +30,7 @@ Master the swinging axe to shatter glass barriers and defeat menacing glass enem
   - Speed lines
   - Screen shake
   - Particles
-- **Physics:**
+- **Physics**
 
 ## Controls
 
@@ -42,8 +45,8 @@ Master the swinging axe to shatter glass barriers and defeat menacing glass enem
 
 ## 📷 Demo
 
-![Demo 1]()
-![Demo 2]()
+![Demo 1](https://cloud-nke4fi17h-hack-club-bot.vercel.app/0image.png)
+![Demo 2](https://cloud-6qte6jsg7-hack-club-bot.vercel.app/0image.png)
 
 ## Technologies
 

@@ -129,6 +129,12 @@ export class Game {
 
     this.loadingManager.setOnLoadCallback(() => {
       this.startAnimation();
+
+      this.showControls();
+
+      setTimeout(() => {
+        this.hideControls();
+      }, 5000);
     });
 
     this.world = new CANNON.World({
@@ -324,6 +330,20 @@ export class Game {
     this.scene.add(this.ropeLine);
 
     window.addEventListener("resize", () => this.onWindowResize());
+  }
+
+  private showControls(): void {
+    const controlsOverlay = document.getElementById("controlsOverlay");
+    if (controlsOverlay) {
+      controlsOverlay.classList.add("visible"); // Add the 'visible' class to show the overlay
+    }
+  }
+
+  private hideControls(): void {
+    const controlsOverlay = document.getElementById("controlsOverlay");
+    if (controlsOverlay) {
+      controlsOverlay.classList.remove("visible"); // Remove the 'visible' class to hide the overlay
+    }
   }
 
   private findNearestPlatform(): THREE.Vector3 | null {
